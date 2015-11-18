@@ -1,45 +1,39 @@
-read.hzb <- function(file, parse.header = TRUE, type = c("fwf", "csv2")) {
-
-  type <- match.arg(type)
-
+read.hzb <- function(file, parse.header = TRUE) {
   # separate the header, open the connection with correct enconding
   fh <- file(file, open = "rt", encoding = "latin1")
-  filecontent <- readLines(fh)
+  header <- readLines(fh, n = 50)
   close(fh)
 
-  filecontent <- gsub("L.*cke", "Luecke", filecontent)
+  type <- if (grepl(";", header[1])) "csv2" else "fwf"
 
-
-  lines.header <- grep("Werte:", head(filecontent, 50), fixed = T)
+  lines.header <- grep("Werte:", header, fixed = T)
   header <- head(header, lines.header - 1)
 
+  args <- list(file = file, header = F, skip = lines.header, na.strings = "L\u00fccke",
+               strip.white = TRUE, as.is = TRUE, fileEncoding = "latin1")
+
   infile <- if(type == "fwf") {
-    read.fwf(text = filecontent, header = F, skip = lines.header,
-             col.names = c("time", "value"),
-             colClasses = c("character", "numeric"),
-             widths = c(20, 20),
-             na.strings = iconv("L\u00fccke", "UTF8", "UTF8"),
-             #na.strings = "Luecke",
-             strip.white = TRUE, as.is = TRUE, fileEncoding = "latin1")
+    do.call(read.fwf, c(args, list(col.names = c("time", "value"),
+                                   colClasses = c("character", "numeric"),
+                                   widths = c(20, 20))))
   } else if (type == "csv2"){
-    read.csv2(text = filecontent, header = F, skip = lines.header,
-              col.names = c("time", "value", NA),
-              colClasses = c("character", "numeric", "NULL"),
-              #na.strings = "Luecke",
-              strip.white = TRUE, as.is = TRUE, fileEncoding = "latin1")
+    do.call(read.csv2, c(args, list(col.names = c("time", "value", NA),
+                                    colClasses = c("character", "numeric", "NULL"))))
   }
 
   infile$time <- as.POSIXct(infile$time, format = "%d.%m.%Y %H:%M:%S")
 
   if (parse.header) {
-    meta <- .parse_hzb_header(header)
+    meta <- .parse_hzb_header(header, type = type)
     attr(x = infile, which = "list") <- meta[["list"]]
     attr(x = infile, which = "keyval") <- meta[["keyval"]]
   }
 
   return(infile)
 }
-.parse_hzb_header <- function(x) {
+.parse_hzb_header <- function(x, type = c("csv2", "fwf")) {
+  type <- match.arg(type)
+
   # some lines are in key: value format,
   # there are also nested lists idented with spaces, treat them differently
   ident <- nchar(sub("^([ ]*).*$", "\\1", x))
@@ -59,7 +53,8 @@ read.hzb <- function(file, parse.header = TRUE, type = c("fwf", "csv2")) {
   keyval <- .split_keyval(keyval)
 
   header.list <-  split(x[which(!is.keyval)], idx[!is.keyval])
-  header.list <- do.call(c, lapply(unname(header.list), .format_list))
+  formatter <- match.fun(paste(".format_list_", type))
+  header.list <- do.call(c, lapply(unname(header.list), formatter))
 
   return(list(keyval = keyval, list = header.list))
 }
@@ -78,7 +73,7 @@ read.hzb <- function(file, parse.header = TRUE, type = c("fwf", "csv2")) {
 }
 
 
-.format_list <- function(x) {
+.format_list_csv2 <- function(x) {
   title <- .format_title(x[1])
 
   tbl <- t(.split_keyval(x[-1], only.first = FALSE))
