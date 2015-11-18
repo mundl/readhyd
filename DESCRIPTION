@@ -1,0 +1,10 @@
+Package: readhyd
+Type: Package
+Title: Importing files for Hydrologial Databases
+Version: 0.1
+Date: 2015-11-18
+Author: Tobias Gauster
+Maintainer: Tobias Gauster <t.gauster@boku.ac.at>
+Description: More about what it does (maybe more than one line)
+License: GPL (>= 2)
+LazyData: TRUE
