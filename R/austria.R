@@ -204,7 +204,7 @@ extract_meta <- function(x) {
                   departement = .value(att1, "Dienststelle"),
                   lon = dms2dec(.listvalue(att2, "Geographische Koordinaten", "L\u00e4nge")),
                   lat = dms2dec(.listvalue(att2, "Geographische Koordinaten", "Breite")),
-                  z = as.numeric(sub(",", ".", .listvalue(att2, "Pegelnullpunkt", "H\u00f6he"))))
+                  z = .toNum(.listvalue(att2, "Pegelnullpunkt", "H\u00f6he")))
 
   rownames(y) <- NULL
   return(y)
@@ -244,6 +244,7 @@ regularize <- function(x, interval = "day") {
 }
 
 
+.toNum <- function(x) as.numeric(sub(",", ".", x))
 
 hzb2xts <- function(x){
   x$time <- as.Date(format(x$time, format = "%Y-%m-%d"))
@@ -257,7 +258,7 @@ hzb2xts <- function(x){
     .listvalue(attr(x, "list"), "Geographische Koordinaten",
                c("L\u00e4nge", "Breite")))
 
-  z <- as.numeric(.listvalue(attr(x, "list"), "Pegelnullpunkt", "H\u00f6he"))
+  z <- .toNum(.listvalue(attr(x, "list"), "Pegelnullpunkt", "H\u00f6he"))
 
   dict <- c("Messstelle"="station", "HZB-Nummer"="id.hzb", "HD-Nummer"="id.hd",
             "DBMS-Nummer"="id.dbms", "Gew\u00e4sser"="river",
@@ -269,7 +270,7 @@ hzb2xts <- function(x){
   names(keyval) <- dict
 
   keyval[["id.hzb"]] <- as.numeric(keyval[["id.hzb"]])
-  keyval[["catchment"]] <- as.numeric(keyval[["catchment"]])
+  keyval[["catchment"]] <- .toNum(keyval[["catchment"]])
   keyval[["unit"]] <- sub("\u00B3", "^3",keyval[["unit"]])
 
   xtsAttributes(y) <- c(keyval, list(coordinates = coord, z = z))
