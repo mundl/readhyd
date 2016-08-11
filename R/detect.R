@@ -1,29 +1,22 @@
-library(lfstat)
-
 # mutable state via lexical scooping
-track_autodetect <- function(formatsOrdered) {
+track_autodetect <- function(allformats) {
+  history <- character()
+
   list(
     append = function(current) {
-      # find index of currently successful file format
-      # todo: implement overall highscore
-      idx <- which(current == names(formatsAvail))
-      if(length(idx)){
-        formatsOrdered <<- unique(c(idx, formatsOrdered))
+      if(current %in% allformats){
+        history <<- c(history, current)
       } else {
         warning("readhyd: type ", shQuote(current),
-                " not registered in object 'formatsAvail'.", call. = FALSE)
+                " not registered in object 'allformatsAvail'.", call. = FALSE)
       }},
-    show   = function() formatsOrdered)
+    history = function() unique(rev(history)),
+    ordered =  function() unique(c(rev(history), allformats)),
+    highscore = function() sort(table(history)))
 }
 
-
 # track the last sucessfully detected file formats in a hidden object
-.lastSuccess <- track_autodetect(seq_along(formatsAvail))
-
-# .lastSuccess$show()
-# .lastSuccess$append("grdc")
-# .lastSuccess$append("gras")
-
+.success <- track_autodetect(names(formatsAvail))
 
 # todo: there can be "dynamic" file formats: header specifies the data layout
 isof_format <- function(format, file, check, nlines = -1, ...) {
@@ -34,12 +27,11 @@ isof_format <- function(format, file, check, nlines = -1, ...) {
   if(!is.logical(success)) stop("argumnt 'check' must return TRUE or FALSE.")
 
   if(success) {
-    .lastSuccess$append(format)
+    .success$append(format)
   }
 
   return(success)
 }
-
 
 # every file format must have a function testing for match ----
 is.grdcHeader <- function(lines) {
@@ -55,38 +47,44 @@ is.grdcData <- function(file) {
 
 }
 
-
 # Registering all available formats ----
 formatsAvail <- list("grdc" = list(check  = is.grdcHeader,
                                    import = lfstat:::read.grdc),
                      "lfu"  = list(check  = is.lfuHeader,
                                    import = lfstat:::read.lfu))
 
-
-
 # Here comes the magic ----
 guess_format <- function(file, formats = formatsAvail,
-                         startWith = .lastSuccess$show(), nlines = 100) {
+                         startWith = .success$ordered(), nlines = 100) {
   for(idx in startWith) {
     currentFormat <- names(formats[idx])
     success <- isof_format(format = currentFormat, file = file,
                            check = formats[[idx]][["check"]], nlines = nlines)
     if(success) {
-      .lastSuccess$append(currentFormat)
+      .success$append(currentFormat)
       return(currentFormat)
     }
   }
 }
 
-
 read.hyd <- function(file, format = guess_format(file), ...) {
-  readlfdata(file, type = toupper(format), baseflow = FALSE, hyearstart = 1, ...)
+  require(lfstat)
+  readlfdata(file, type = toupper(format), baseflow = FALSE, hyearstart = 1,
+             ...)
 }
 
-read_file <- function(file, format = guess_format(file), ...) {
+read_file <- function(file, format = guess_format(file), formats = formatsAvail,
+                      ...) {
   import <- formats[[format]][["import"]]
   import(file)
 }
+
+
+# .success$history()
+# .success$append("grdc")
+# .success$append("gras")
+# .success$highscore()
+# .success$ordered()
 
 
 # Testing
