@@ -8,3 +8,5 @@ Maintainer: Tobias Gauster <t.gauster@boku.ac.at>
 Description: More about what it does (maybe more than one line)
 License: GPL (>= 2)
 LazyData: TRUE
+Depends: assertthat
+Suggests: testthat

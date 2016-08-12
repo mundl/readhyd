@@ -1,5 +1,7 @@
-read.hzb <- function(file, parse.header = TRUE, fileEncoding = "ISO8859-1") {
+read.hzb <- function(file, parse.header = TRUE, fileEncoding = "ISO8859-1",
+                     nlines = -1) {
   # separate the header, open the connection with correct enconding
+  # todo: speedup using connections like in read.lfu()
   fh <- file(file, open = "rt", encoding = fileEncoding)
   header <- readLines(fh, n = 50)
   close(fh)
@@ -11,6 +13,7 @@ read.hzb <- function(file, parse.header = TRUE, fileEncoding = "ISO8859-1") {
 
   na.strings <- iconv("L\u00fccke", from = "UTF-8", to = fileEncoding)
 
+
   args <- list(file = file, header = F, skip = lines.header,
                na.strings = na.strings, fileEncoding = fileEncoding,
                strip.white = TRUE, as.is = TRUE)
@@ -18,24 +21,45 @@ read.hzb <- function(file, parse.header = TRUE, fileEncoding = "ISO8859-1") {
   infile <- if(type == "fwf") {
     do.call(read.fwf, c(args, list(col.names = c("time", "value"),
                                    colClasses = c("character", "numeric"),
-                                   widths = c(20, 20))))
+                                   widths = c(20, 20), n = nlines)))
   } else if (type == "csv2"){
+    ncol <- length(strsplit(header[1], ";")[[1]]) + 1
+
+    # also remove trailing separators in header
+    header <- sub(";+$", "", header, fixed = FALSE)
     do.call(read.csv2, c(args,
-                         list(col.names = c("time", "value", NA),
-                              colClasses = c("character", "numeric", "NULL"))))
+                         list(col.names = c("time", "value", rep(NA, ncol - 2)),
+                              colClasses = c("character", "numeric",
+                                             rep("NULL", ncol -2)),
+                              nrows = nlines)))
   }
 
-  infile$time <- as.POSIXct(infile$time, format = "%d.%m.%Y %H:%M:%S")
+  # letzter Wert ist immer NA, irgendwie unnötig
+  # nicht entfernen, wenn nur ein Teil der Datei eingelesen wird
+  if(nlines < 0) infile <- head(infile, -1)
+
+  # sehr ungeschicktes Verhalten: keine Umstellung von Winterzeit auf Sommerzeit
+  # aber auch im Sommer werden die Tagesmittelwerte mit "%d.%m.%Y 00:00:00"
+  # bezeichnet
+  # resultierende NA Werte im Zeitstempel entfernen
+  # gibt vermutlich Probleme wenn eine Zeitreihe von Stundendaten erwartet wird
+  infile$time <- try_timeformat(infile$time, format = "%d.%m.%Y %H:%M:%S")
+  nas <- which(is.na(infile$time))
+  if(length(nas)) {
+    infile <- infile[!is.na(infile$time), ]
+    warning(basename(file), ": removing NA values in index")
+  }
+
 
   if (parse.header) {
-    meta <- .parse_hzb_header(header, type = type)
+    meta <- .parse_header_hzb(header, type = type)
     attr(x = infile, which = "list") <- meta[["list"]]
     attr(x = infile, which = "keyval") <- meta[["keyval"]]
   }
 
   return(infile)
 }
-.parse_hzb_header <- function(x, type = c("csv2", "fwf")) {
+.parse_header_hzb <- function(x, type = c("csv2", "fwf")) {
   type <- match.arg(type)
 
   # some lines are in key: value format,
@@ -231,24 +255,9 @@ nlast <- function(x, n = 1, col) {
 }
 
 
-regularize <- function(x, interval = "day") {
-  fullseq <- seq(from = min(time(x)), to = max(time(x)), by = interval)
-  missing <- fullseq[!fullseq %in% time(x)]
 
-  if(length(missing)) {
-    gaps <- xts(x = data.frame(discharge = rep_len(NA_real_, length(missing))), order.by = missing)
-    x <- rbind(x, gaps)
-  }
-
-  return(x)
-}
-
-
-.toNum <- function(x) as.numeric(sub(",", ".", x))
 
 hzb2xts <- function(x){
-  x$time <- as.Date(format(x$time, format = "%Y-%m-%d"))
-  x <- x[!duplicated(x$time), ]
   y <- xts(x = data.frame(discharge = x$value), order.by = x$time)
   y <- regularize(y)
 
@@ -276,17 +285,4 @@ hzb2xts <- function(x){
   xtsAttributes(y) <- c(keyval, list(coordinates = coord, z = z))
 
   return(y)
-}
-
-dms2dec <- function(x, split = " ", ...){
-  res <- rep(NA, length(x))
-
-  if(!all(is.na(x))) {
-    y <- strsplit(x[!is.na(x)], split = split, ...)
-    z <- sapply(y, function(x)
-      sum(as.numeric(x) * c(1, 1/60^seq_len(length(x) - 1))))
-    res[!is.na(x)] <- z
-  }
-
-  return(res)
 }
