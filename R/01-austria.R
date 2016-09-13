@@ -1,3 +1,5 @@
+# always open the connection with the correct encoding
+
 read.hzb <- function(file, parse.header = TRUE, fileEncoding = "ISO8859-1",
                      nlines = -1) {
   # separate the header, open the connection with correct enconding
@@ -11,8 +13,7 @@ read.hzb <- function(file, parse.header = TRUE, fileEncoding = "ISO8859-1",
   lines.header <- grep("Werte:", header, fixed = T)
   header <- head(header, lines.header - 1)
 
-  na.strings <- iconv("L\u00fccke", from = "UTF-8", to = fileEncoding)
-
+  na.strings <- "L\u00fccke"
 
   args <- list(file = file, header = F, skip = lines.header,
                na.strings = na.strings, fileEncoding = fileEncoding,

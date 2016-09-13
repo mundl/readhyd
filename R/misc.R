@@ -139,7 +139,7 @@ guess_value_col <- function(x) {
 
 
 split_header <- function(file, prefix = "#", regex = NULL, fixed = TRUE,
-                         encoding = "UTF-8", ...) {
+                         useBytes = TRUE, encoding = "UTF-8", ...) {
 
   con <- file(file, open = "rt", encoding = encoding)
   header <- list()
@@ -150,12 +150,13 @@ split_header <- function(file, prefix = "#", regex = NULL, fixed = TRUE,
       # possibly not a good idea to use a while loop
       # readLines() can cause problems when using a wrong encoding
       header <- c(header, readLines(con, n = 1))
-      isHeader <- !grepl(regex, tail(header, 1L)[[1]], fixed = fixed)
+      isHeader <- !grepl(regex, tail(header, 1L)[[1]], fixed = fixed,
+                         useBytes = useBytes)
     }
   } else {
     isHeader <- TRUE
     while (isHeader) {
-      header <- c(header, readLines(con, n = 1))
+      header <- c(header, readLines(con, n = 1, warn = FALSE))
       isHeader <- substr(tail(header, 1L)[[1]], 1L, 1L) == prefix
     }
 

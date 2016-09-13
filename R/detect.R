@@ -31,31 +31,33 @@ isof_format <- function(format, file, check, nlines = -1, ...) {
 
 # every file format must have a function testing for match ----
 is.grdcHeader <- function(lines) {
-  any(grepl("GRDC STATION DATA FILE", lines, fixed = TRUE))
+  any(grepl("GRDC STATION DATA FILE", lines, fixed = TRUE, useBytes = TRUE))
 }
 
 is.lfuHeader <- function(lines) {
   # header contains '|*|' as field separator
-  any(grepl("#.*\\|\\*\\|", lines, fixed = FALSE))
+  any(grepl("#.*\\|\\*\\|", lines, fixed = FALSE, useBytes = TRUE))
 }
 
 is.hzbHeader <- function(lines) {
-  any(grepl("HZB-Nummer:", lines, fixed = TRUE))
+  any(grepl("HZB-Nummer:", lines, fixed = TRUE, useBytes = TRUE))
 }
 
 is.nrfaHeader <- function(lines) {
-  any(grepl("database,id,nrfa", lines, fixed = TRUE))
+  any(grepl("database,id,nrfa", lines, fixed = TRUE, useBytes = TRUE))
 }
 
 is.gkdHeader <- function(lines) {
   # file has an encoding different from utf8
-  any(grepl("Quelle:;\"Bayerisches Landesamt f\u00fcr Umwelt, www.gkd.bayern.de\"",
-            lines, fixed = TRUE))
+ # any(grepl("Quelle:;\"Bayerisches Landesamt f\u00fcr Umwelt, www.gkd.bayern.de\"",
+ #           lines, fixed = TRUE))
+  any(grepl("Bayerisches Landesamt f",
+                       lines, useBytes = TRUE))
 }
 
 is.vardat2Header <- function(lines) {
   any(grepl("####################### 2 ########################",
-            lines, fixed = TRUE))
+            lines, fixed = TRUE, useBytes = TRUE))
 }
 
 is.grdcData <- function(file) {
@@ -88,13 +90,13 @@ guess_format <- function(file, formats = formatsAvail,
   }
 }
 
-read.hyd <- function(file, format = guess_format(file), ...) {
-  require(lfstat)
-  readlfdata(file, type = toupper(format), baseflow = FALSE, hyearstart = 1,
-             ...)
-}
+# read.hyd <- function(file, format = guess_format(file), ...) {
+#   require(lfstat)
+#   readlfdata(file, type = toupper(format), baseflow = FALSE, hyearstart = 1,
+#              ...)
+# }
 
-read_file <- function(file, format = guess_format(file), formats = formatsAvail,
+read.hyd <- function(file, format = guess_format(file), formats = formatsAvail,
                       ...) {
   import <- formats[[format]][["import"]]
   x <- try(import(file, ...))

@@ -35,10 +35,10 @@ read.lfu <- function(file, as.zoo = FALSE, ...) {
 
   header <- paste(substring(header, first = 2L), collapse = "")
   header <- strsplit(header, split = "|", fixed = T)[[1]]
-  meta <- sapply(keys, .getValueLFU, x = header)
+  meta <- as.list(sapply(keys, .getValueLFU, x = header))
 
   # this works only if NAstings is a (negative) number
-  body$value[body$value == .toNum(meta["RINVAL"])] <- NA
+  body$value[body$value == .toNum(meta[["RINVAL"]])] <- NA
 
   res <- data.frame(time = as.Date(body$time, format="%Y%m%d%H%M"),
                     flow = body$value)
@@ -62,10 +62,11 @@ read.lfu <- function(file, as.zoo = FALSE, ...) {
 }
 
 
-read.grdc <- function(file, as.zoo = FALSE, ...) {
+read.grdc <- function(file, as.zoo = FALSE, fileEncoding = "WINDOWS-1252", ...) {
 
   # todo: parse header
   x <- split_header(file = file,  sep = ";", quiet = TRUE, skip = 1,
+                    encoding = fileEncoding,
                     what = list(date = character(), time = character(),
                                 original = numeric(), corrected = numeric(),
                                 flag = numeric()),

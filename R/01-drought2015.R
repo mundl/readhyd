@@ -34,7 +34,7 @@ read.dat.no <- function(file, ...) {
 
 
 # UK ----
-read.nrfa <- function(file, nlines, ...) {
+read.nrfa <- function(file, nlines = -1, ...) {
   txt <-  readLines(file)
 
   lines.header <- grep("data,last,", head(txt, 50), fixed = T)
@@ -94,10 +94,11 @@ read.txt.es <- function(file, ...) {
 
 
 ### Germany / Bavaria ----
-read.gkd <- function(file, ...) {
+read.gkd <- function(file, fileEncoding = "ISO8859-1", ...) {
 
   x <- split_header(file = file,  regex = "Datum;Mittelwert;Maximum;Minimum;",
                     sep = ";", dec = ",", quiet = TRUE, skip = 1,
+                    encoding = fileEncoding,
                     what = list(date = character(), mean = numeric(),
                                 max = numeric(), min = numeric(),
                                 flag = character()), strip.white = TRUE, ...)

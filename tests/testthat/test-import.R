@@ -17,7 +17,7 @@ test_that("read.lfu works", {
 
   # has metadata
   meta <- attr(infile, "meta")
-  expected <- c("SANR" = "16610709", "SNAME" = "Oberammergau",
+  expected <- list("SANR" = "16610709", "SNAME" = "Oberammergau",
                 "SWATER" = "Ammer", "CMW1" = "", "RNR1" = "", "RID" = "-1")
 
   expect_equal(meta, expected)

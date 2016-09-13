@@ -13,14 +13,14 @@ test_that("header are recognized", {
 
 context("Automatically testing file import")
 
-test_that("read_file works for all formats", {
+test_that("read.hyd works for all formats", {
   for(i in seq_len(nrow(ex))) {
     # some sample files just have a few lines
     n <- 200
     filename <- ex$file[i]
 
     # import functions accept the nlines argument
-    expect_silent(infile <- read_file(file = filename, nlines = n))
+    expect_silent(infile <- read.hyd(file = filename, nlines = n))
 
     # number of lines is correct
     expect_equal(object = nrow(infile), expected = n, info = filename)
